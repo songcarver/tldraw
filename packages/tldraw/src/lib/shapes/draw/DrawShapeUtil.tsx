@@ -32,6 +32,7 @@ import { interpolateSegments } from '../shared/interpolate-props'
 import { PatternFill } from '../shared/PatternFill'
 import {
 	getDrawShapeStrokeDashArray,
+	getExperimentalStartPressure,
 	getFreehandOptions,
 	getPointsFromDrawSegments,
 } from './getPath'
@@ -140,7 +141,13 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 
 		const strokePoints = getStrokePoints(
 			points,
-			getFreehandOptions(shape.props, sw, shape.props.isPen, true)
+			getFreehandOptions(
+				shape.props,
+				sw,
+				shape.props.isPen,
+				true,
+				getExperimentalStartPressure(shape, points, sw)
+			)
 		).map((p) => p.point)
 
 		// A closed draw stroke
@@ -203,7 +210,13 @@ export class DrawShapeUtil extends ShapeUtil<TLDrawShape> {
 		}
 
 		const showAsComplete = shape.props.isComplete || last(shape.props.segments)?.type === 'straight'
-		const options = getFreehandOptions(shape.props, sw, showAsComplete, true)
+		const options = getFreehandOptions(
+			shape.props,
+			sw,
+			showAsComplete,
+			true,
+			getExperimentalStartPressure(shape, allPointsFromSegments, sw)
+		)
 		const strokePoints = getStrokePoints(allPointsFromSegments, options)
 		const solidStrokePath =
 			strokePoints.length > 1
@@ -336,7 +349,13 @@ function DrawShapeSvg({
 		sw += rng(shape.id)() * (sw / 6)
 	}
 
-	const options = getFreehandOptions(shape.props, sw, showAsComplete, forceSolid)
+	const options = getFreehandOptions(
+		shape.props,
+		sw,
+		showAsComplete,
+		forceSolid,
+		getExperimentalStartPressure(shape, allPointsFromSegments, sw)
+	)
 
 	if (!forceSolid && shape.props.dash === 'draw') {
 		return (

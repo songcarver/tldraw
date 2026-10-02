@@ -17,6 +17,12 @@ export interface StrokeOptions {
 	easing?(pressure: number): number
 	/** Whether to simulate pressure based on velocity. */
 	simulatePressure?: boolean
+	/**
+	 * The simulated pressure (0-1) at the start of the line, e.g. from the pointer's velocity
+	 * when the line began. Only used when `simulatePressure` is true. When omitted, the start
+	 * pressure is estimated from the first few points.
+	 */
+	startPressure?: number
 	/** Cap, taper and easing for the start of the line. */
 	start?: {
 		cap?: boolean

@@ -3579,6 +3579,7 @@ export interface StrokeOptions {
         easing?(distance: number): number;
         taper?: boolean | number;
     };
+    startPressure?: number;
     // (undocumented)
     streamline?: number;
     thinning?: number;

@@ -300,6 +300,7 @@ export function computeRadii(options: StrokeOptions): void {
 		size = 16,
 		thinning = 0.5,
 		simulatePressure = true,
+		startPressure,
 		easing = (t) => t,
 		start = {},
 		end = {},
@@ -328,8 +329,12 @@ export function computeRadii(options: StrokeOptions): void {
 
 	// Calculate initial pressure based on the average of the first n number of points.
 	// This prevents "dots" at the start of the line. Drawn lines almost always start slow!
-	let prevPressure = press[0]
+	// When the caller knows the pressure at the start (e.g. from the pointer's velocity
+	// when the stroke began), use it instead.
+	const hasStartPressure = simulatePressure && startPressure !== undefined
+	let prevPressure = hasStartPressure ? min(1, Math.max(0, startPressure)) : press[0]
 	for (let i = 0; i < n; i++) {
+		if (hasStartPressure) break
 		if (runs[i] > size * 5) break
 		const sp = min(1, dists[i] / size)
 		let p: number

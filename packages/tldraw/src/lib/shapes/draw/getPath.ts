@@ -79,7 +79,8 @@ export function getFreehandOptions(
 	shapeProps: { dash: TLDefaultDashStyle; isPen: boolean; isComplete: boolean },
 	strokeWidth: number,
 	forceComplete: boolean,
-	forceSolid: boolean
+	forceSolid: boolean,
+	startPressure?: number
 ): StrokeOptions {
 	const last = shapeProps.isComplete || forceComplete
 
@@ -95,11 +96,72 @@ export function getFreehandOptions(
 		if (shapeProps.isPen) {
 			return { ...realPressureSettings(strokeWidth), last }
 		} else {
-			return { ...simulatePressureSettings(strokeWidth), last }
+			return { ...simulatePressureSettings(strokeWidth), startPressure, last }
 		}
 	}
 
 	return { ...solidSettings(strokeWidth), last }
+}
+
+// About one pointer sample per frame, so a speed in px/ms becomes a point spacing in px.
+const MS_PER_POINT = 16
+
+/**
+ * Get the simulated pressure at the start of a line from the pointer's speed when it began.
+ * This uses the same rule as simulated pressure along the line: the further apart the
+ * points, the thinner the line. Returns undefined when the pointer was too slow to make the
+ * start thinner than the default, so slow starts keep the default behaviour.
+ *
+ * @param speed - The pointer's speed in page units per millisecond.
+ * @param strokeWidth - The width of the stroke in page units.
+ * @param curve - The exponent on the speed. 1 is linear. Less than 1 makes medium speeds
+ *   thinner. More than 1 makes only fast starts thinner.
+ */
+export function getStartPressureFromSpeed(
+	speed: number,
+	strokeWidth: number,
+	curve = 1
+): number | undefined {
+	if (!(speed > 0) || !(strokeWidth > 0)) return undefined
+	const pressure = 1 - Math.min(1, (speed * MS_PER_POINT) / strokeWidth) ** curve
+	return pressure < 0.5 ? pressure : undefined
+}
+
+/**
+ * EXPERIMENT: the start pressure for a draw shape, from the data that the velocity-start
+ * example puts in the shape's meta. Upstream, the start speed would be a shape prop.
+ */
+export function getExperimentalStartPressure(
+	shape: TLDrawShape,
+	points: Vec[],
+	strokeWidth: number
+): number | undefined {
+	const meta = shape.meta as {
+		startMode?: string
+		startSpeed?: number
+		startStrength?: number
+		startCurve?: number
+	}
+	const strength = meta.startStrength ?? 1
+	const curve = meta.startCurve ?? 1
+	switch (meta.startMode) {
+		case 'hover':
+			return getStartPressureFromSpeed((meta.startSpeed ?? 0) * strength, strokeWidth, curve)
+		case 'first-points': {
+			// Use the spacing of the first few points as the speed.
+			const count = Math.min(points.length - 1, 3)
+			if (count < 1) return undefined
+			let dist = 0
+			for (let i = 1; i <= count; i++) dist += Vec.Dist(points[i], points[i - 1])
+			return getStartPressureFromSpeed(
+				((dist / count) * strength) / MS_PER_POINT,
+				strokeWidth,
+				curve
+			)
+		}
+		default:
+			return undefined
+	}
 }
 
 /** @public */
